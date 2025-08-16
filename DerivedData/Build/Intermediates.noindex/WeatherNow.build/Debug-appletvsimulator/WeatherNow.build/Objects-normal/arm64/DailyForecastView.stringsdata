@@ -1,0 +1,48 @@
+{
+  "source": "/Users/maweihao/AppleProjects/WeatherNow/WeatherNow/DailyForecastView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "7-Day Forecast",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 18
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 69
+        }
+      },
+      {
+        "comment": "",
+        "key": "Feels like %@",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 108
+        }
+      },
+      {
+        "comment": "",
+        "key": "High",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 88
+        }
+      },
+      {
+        "comment": "",
+        "key": "Low",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 98
+        }
+      }
+    ]
+  },
+  "version": 1
+}

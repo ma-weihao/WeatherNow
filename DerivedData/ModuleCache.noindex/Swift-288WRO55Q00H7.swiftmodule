@@ -1,0 +1,12 @@
+---
+path:            '/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/appletvsimulator/prebuilt-modules/18.5/Swift.swiftmodule/arm64-apple-tvos-simulator.swiftmodule'
+dependencies:
+  - mtime:           1746142467000000000
+    path:            '/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/appletvsimulator/prebuilt-modules/18.5/Swift.swiftmodule/arm64-apple-tvos-simulator.swiftmodule'
+    size:            13990120
+  - mtime:           1745043012000000000
+    path:            'usr/lib/swift/Swift.swiftmodule/arm64-apple-tvos-simulator.swiftinterface'
+    size:            1929363
+    sdk_relative:    true
+version:         1
+...
