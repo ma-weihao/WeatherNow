@@ -304,11 +304,14 @@ typedef unsigned int swift_uint4  __attribute__((__ext_vector_type__(4)));
 
 #if defined(__OBJC__)
 
+SWIFT_CLASS("_TtC10WeatherNow15LocationService")
+@interface LocationService : NSObject
+- (nonnull instancetype)init OBJC_DESIGNATED_INITIALIZER;
+@end
+
 @class CLLocationManager;
 @class CLLocation;
-SWIFT_CLASS("_TtC10WeatherNow14WeatherService")
-@interface WeatherService : NSObject <CLLocationManagerDelegate>
-- (nonnull instancetype)init OBJC_DESIGNATED_INITIALIZER;
+@interface LocationService (SWIFT_EXTENSION(WeatherNow)) <CLLocationManagerDelegate>
 - (void)locationManager:(CLLocationManager * _Nonnull)manager didUpdateLocations:(NSArray<CLLocation *> * _Nonnull)locations;
 - (void)locationManager:(CLLocationManager * _Nonnull)manager didFailWithError:(NSError * _Nonnull)error;
 - (void)locationManager:(CLLocationManager * _Nonnull)manager didChangeAuthorizationStatus:(CLAuthorizationStatus)status;

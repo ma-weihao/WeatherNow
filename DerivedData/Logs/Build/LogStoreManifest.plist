@@ -6,7 +6,7 @@
 	<integer>11</integer>
 	<key>logs</key>
 	<dict>
-		<key>A275C7C2-662D-49BA-81BE-DF3485C679AE</key>
+		<key>FEA97483-D41F-4807-909D-DB986DA913EB</key>
 		<dict>
 			<key>className</key>
 			<string>IDECommandLineBuildLog</string>
@@ -15,49 +15,7 @@
 			<key>domainType</key>
 			<string>Xcode.IDEActivityLogDomainType.BuildLog</string>
 			<key>fileName</key>
-			<string>A275C7C2-662D-49BA-81BE-DF3485C679AE.xcactivitylog</string>
-			<key>hasPrimaryLog</key>
-			<true/>
-			<key>primaryObservable</key>
-			<dict>
-				<key>highLevelStatus</key>
-				<string>S</string>
-				<key>totalNumberOfAnalyzerIssues</key>
-				<integer>0</integer>
-				<key>totalNumberOfErrors</key>
-				<integer>0</integer>
-				<key>totalNumberOfTestFailures</key>
-				<integer>0</integer>
-				<key>totalNumberOfWarnings</key>
-				<integer>0</integer>
-			</dict>
-			<key>schemeIdentifier-containerName</key>
-			<string>WeatherNow project</string>
-			<key>schemeIdentifier-schemeName</key>
-			<string>WeatherNow</string>
-			<key>schemeIdentifier-sharedScheme</key>
-			<integer>1</integer>
-			<key>signature</key>
-			<string>Building project WeatherNow with scheme WeatherNow</string>
-			<key>timeStartedRecording</key>
-			<real>777029150.25071394</real>
-			<key>timeStoppedRecording</key>
-			<real>777029157.93454099</real>
-			<key>title</key>
-			<string>Building project WeatherNow with scheme WeatherNow</string>
-			<key>uniqueIdentifier</key>
-			<string>A275C7C2-662D-49BA-81BE-DF3485C679AE</string>
-		</dict>
-		<key>B8674864-4FCA-4217-8AD7-BC03536056F8</key>
-		<dict>
-			<key>className</key>
-			<string>IDECommandLineBuildLog</string>
-			<key>documentTypeString</key>
-			<string>&lt;nil&gt;</string>
-			<key>domainType</key>
-			<string>Xcode.IDEActivityLogDomainType.BuildLog</string>
-			<key>fileName</key>
-			<string>B8674864-4FCA-4217-8AD7-BC03536056F8.xcactivitylog</string>
+			<string>FEA97483-D41F-4807-909D-DB986DA913EB.xcactivitylog</string>
 			<key>hasPrimaryLog</key>
 			<true/>
 			<key>primaryObservable</key>
@@ -71,7 +29,7 @@
 				<key>totalNumberOfTestFailures</key>
 				<integer>0</integer>
 				<key>totalNumberOfWarnings</key>
-				<integer>2</integer>
+				<integer>24</integer>
 			</dict>
 			<key>schemeIdentifier-containerName</key>
 			<string>WeatherNow project</string>
@@ -82,13 +40,13 @@
 			<key>signature</key>
 			<string>Building project WeatherNow with scheme WeatherNow</string>
 			<key>timeStartedRecording</key>
-			<real>777030677.386042</real>
+			<real>777038686.557284</real>
 			<key>timeStoppedRecording</key>
-			<real>777030685.28144598</real>
+			<real>777038694.64482903</real>
 			<key>title</key>
 			<string>Building project WeatherNow with scheme WeatherNow</string>
 			<key>uniqueIdentifier</key>
-			<string>B8674864-4FCA-4217-8AD7-BC03536056F8</string>
+			<string>FEA97483-D41F-4807-909D-DB986DA913EB</string>
 		</dict>
 	</dict>
 </dict>

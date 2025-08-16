@@ -60,6 +60,9 @@ struct ContentView: View {
                             .padding(.vertical, 20)
                         }
                         .tag(1)
+                        .onAppear {
+                            print("ContentView: Hourly forecast tab appeared - count: \(weatherService.hourlyForecast.count)")
+                        }
                         
                         // Daily Forecast Tab
                         ScrollView {
@@ -71,6 +74,9 @@ struct ContentView: View {
                             .padding(.vertical, 20)
                         }
                         .tag(2)
+                        .onAppear {
+                            print("ContentView: Daily forecast tab appeared - count: \(weatherService.dailyForecast.count)")
+                        }
                     }
                     .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
                     
@@ -130,10 +136,73 @@ struct ContentView: View {
             }
         }
         .onAppear {
-            // Only request location if we don't have weather data and aren't already loading
-            if weatherService.currentWeather == nil && !weatherService.isLoading {
-                weatherService.requestLocation()
+            print("ContentView: onAppear called")
+            print("ContentView: currentWeather: \(weatherService.currentWeather != nil), isLoading: \(weatherService.isLoading)")
+            // Force debug weather data for testing
+            print("ContentView: Force debug weather data")
+            let sampleWeather = ProcessedCurrentWeather(
+                dt: Date().timeIntervalSince1970,
+                temp: 22.5,
+                feelsLike: 24.0,
+                pressure: 1013,
+                humidity: 65,
+                uvi: 3.5,
+                clouds: 20,
+                visibility: 10000,
+                windSpeed: 12.5,
+                windDeg: 180,
+                weather: [WeatherDescription(id: 0, main: "Clear sky", description: "clear sky", icon: "0")],
+                sunrise: Date().timeIntervalSince1970,
+                sunset: Date().timeIntervalSince1970
+            )
+            weatherService.currentWeather = sampleWeather
+            weatherService.location = Location(name: "San Francisco", lat: 37.785834, lon: -122.406417, country: "United States", state: "California")
+            weatherService.isLoading = false
+            
+            // Create sample daily forecast data
+            var sampleDailyForecast: [ProcessedDailyWeather] = []
+            for i in 0..<7 {
+                let day = ProcessedDailyWeather(
+                    dt: Date().timeIntervalSince1970 + Double(i * 24 * 3600),
+                    sunrise: Date().timeIntervalSince1970 + Double(i * 24 * 3600),
+                    sunset: Date().timeIntervalSince1970 + Double(i * 24 * 3600),
+                    temp: Temperature(day: 22.0 + Double(i), min: 15.0 + Double(i), max: 25.0 + Double(i), night: 18.0 + Double(i), eve: 20.0 + Double(i), morn: 16.0 + Double(i)),
+                    feelsLike: FeelsLike(day: 24.0 + Double(i), night: 20.0 + Double(i), eve: 22.0 + Double(i), morn: 18.0 + Double(i)),
+                    pressure: 1013,
+                    humidity: 60 + i,
+                    windSpeed: 10.0 + Double(i),
+                    windDeg: 180,
+                    weather: [WeatherDescription(id: 0, main: "Clear sky", description: "clear sky", icon: "0")],
+                    clouds: 20,
+                    pop: 0.0,
+                    uvi: 3.5
+                )
+                sampleDailyForecast.append(day)
             }
+            weatherService.dailyForecast = sampleDailyForecast
+            print("ContentView: Debug weather data set - dailyForecast count: \(weatherService.dailyForecast.count)")
+            
+            // Create sample hourly forecast data
+            var sampleHourlyForecast: [ProcessedHourlyWeather] = []
+            for i in 0..<24 {
+                let hour = ProcessedHourlyWeather(
+                    dt: Date().timeIntervalSince1970 + Double(i * 3600),
+                    temp: 20.0 + Double(i % 6) - 3.0, // Varying temperature throughout the day
+                    feelsLike: 22.0 + Double(i % 6) - 2.0,
+                    pressure: 1013,
+                    humidity: 60 + (i % 20),
+                    uvi: 0.0,
+                    clouds: 20 + (i % 30),
+                    visibility: 10000,
+                    windSpeed: 8.0 + Double(i % 10),
+                    windDeg: 180 + (i * 15) % 360,
+                    weather: [WeatherDescription(id: 0, main: "Clear sky", description: "clear sky", icon: "0")],
+                    pop: Double(i % 5) * 0.1 // Some hours have precipitation
+                )
+                sampleHourlyForecast.append(hour)
+            }
+            weatherService.hourlyForecast = sampleHourlyForecast
+            print("ContentView: Debug weather data set - hourlyForecast count: \(weatherService.hourlyForecast.count)")
         }
         .onReceive(weatherService.$currentWeather) { newValue in
             print("ContentView: currentWeather changed to: \(newValue != nil)")

@@ -7,7 +7,7 @@
         "key": "7-Day Forecast",
         "location": {
           "startingColumn": 22,
-          "startingLine": 18
+          "startingLine": 23
         }
       },
       {
@@ -15,7 +15,7 @@
         "key": "%@",
         "location": {
           "startingColumn": 26,
-          "startingLine": 69
+          "startingLine": 76
         }
       },
       {
@@ -23,7 +23,7 @@
         "key": "Feels like %@",
         "location": {
           "startingColumn": 22,
-          "startingLine": 108
+          "startingLine": 115
         }
       },
       {
@@ -31,7 +31,7 @@
         "key": "High",
         "location": {
           "startingColumn": 30,
-          "startingLine": 88
+          "startingLine": 95
         }
       },
       {
@@ -39,7 +39,7 @@
         "key": "Low",
         "location": {
           "startingColumn": 30,
-          "startingLine": 98
+          "startingLine": 105
         }
       }
     ]

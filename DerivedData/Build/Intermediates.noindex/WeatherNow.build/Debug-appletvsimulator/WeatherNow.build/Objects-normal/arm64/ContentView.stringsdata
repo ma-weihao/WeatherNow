@@ -7,7 +7,7 @@
         "key": "WeatherNow",
         "location": {
           "startingColumn": 26,
-          "startingLine": 87
+          "startingLine": 93
         }
       },
       {
@@ -15,7 +15,7 @@
         "key": "Getting your location...",
         "location": {
           "startingColumn": 26,
-          "startingLine": 91
+          "startingLine": 97
         }
       },
       {
@@ -23,7 +23,7 @@
         "key": "Enable Location Access",
         "location": {
           "startingColumn": 28,
-          "startingLine": 95
+          "startingLine": 101
         }
       },
       {
@@ -31,7 +31,7 @@
         "key": "Test with Default Location",
         "location": {
           "startingColumn": 28,
-          "startingLine": 100
+          "startingLine": 106
         }
       },
       {
@@ -39,7 +39,7 @@
         "key": "Debug: Force Weather Data",
         "location": {
           "startingColumn": 28,
-          "startingLine": 106
+          "startingLine": 112
         }
       },
       {
@@ -47,7 +47,7 @@
         "key": "WeatherNow",
         "location": {
           "startingColumn": 22,
-          "startingLine": 156
+          "startingLine": 225
         }
       },
       {
@@ -55,7 +55,7 @@
         "key": "%@, %@",
         "location": {
           "startingColumn": 22,
-          "startingLine": 160
+          "startingLine": 229
         }
       },
       {
@@ -63,7 +63,7 @@
         "key": "Loading Weather Data...",
         "location": {
           "startingColumn": 18,
-          "startingLine": 234
+          "startingLine": 303
         }
       },
       {
@@ -71,7 +71,7 @@
         "key": "Oops!",
         "location": {
           "startingColumn": 18,
-          "startingLine": 254
+          "startingLine": 323
         }
       },
       {
@@ -79,7 +79,7 @@
         "key": "Try Again",
         "location": {
           "startingColumn": 20,
-          "startingLine": 264
+          "startingLine": 333
         }
       }
     ]

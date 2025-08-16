@@ -13,6 +13,11 @@ struct DailyForecastView: View {
     
     var body: some View {
         VStack(spacing: 30) {
+            // Debug print
+            let _ = print("DailyForecastView: received \(dailyForecast.count) forecast items")
+            let _ = print("DailyForecastView: first item dt: \(dailyForecast.first?.dt ?? 0)")
+            let _ = print("DailyForecastView: first item temp max: \(dailyForecast.first?.temp.max ?? 0)")
+            
             // Header
             HStack {
                 Text("7-Day Forecast")
@@ -24,7 +29,7 @@ struct DailyForecastView: View {
             
             // Daily Forecast Cards
             ScrollView {
-                LazyVStack(spacing: 20) {
+                LazyVStack(spacing: 15) {
                     ForEach(Array(dailyForecast.enumerated()), id: \.offset) { index, day in
                         DailyForecastCard(
                             day: day,
@@ -34,7 +39,7 @@ struct DailyForecastView: View {
                         .id(index) // Ensure proper identification
                     }
                 }
-                .padding(.bottom, 40) // Add bottom padding for scrolling
+                .padding(.horizontal, 20)
             }
         }
         .padding(40)
@@ -56,6 +61,8 @@ struct DailyForecastCard: View {
     let day: ProcessedDailyWeather
     let weatherService: WeatherService
     let isToday: Bool
+    
+    @State private var isFocused = false
     
     var body: some View {
         HStack(spacing: 20) {
@@ -172,16 +179,18 @@ struct DailyForecastCard: View {
         .padding(15)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(Color.white.opacity(0.1))
+                .fill(Color.white.opacity(isFocused ? 0.2 : 0.1))
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)
                         .stroke(
-                            isToday ? Color.yellow.opacity(0.6) : Color.clear,
-                            lineWidth: 1
+                            isFocused ? Color.yellow : (isToday ? Color.yellow.opacity(0.6) : Color.clear),
+                            lineWidth: isFocused ? 2 : 1
                         )
                 )
         )
         .frame(height: 100) // Fixed height for consistency
+        .scaleEffect(isFocused ? 1.02 : 1.0)
+        .animation(.easeInOut(duration: 0.2), value: isFocused)
     }
 }
 

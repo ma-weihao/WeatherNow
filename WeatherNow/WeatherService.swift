@@ -9,9 +9,14 @@ import Foundation
 import CoreLocation
 import SwiftUI
 
-class WeatherService: NSObject, ObservableObject, CLLocationManagerDelegate {
-    private let locationManager = CLLocationManager()
+@MainActor
+final class WeatherService: WeatherServiceProtocol {
+    // MARK: - Dependencies
+    private let locationService: LocationServiceProtocol
+    private let weatherAPIService: WeatherAPIService
+    private let weatherFormatter: WeatherFormatterProtocol
     
+    // MARK: - Published Properties
     @Published var currentWeather: ProcessedCurrentWeather?
     @Published var hourlyForecast: [ProcessedHourlyWeather] = []
     @Published var dailyForecast: [ProcessedDailyWeather] = []
@@ -19,227 +24,118 @@ class WeatherService: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published var isLoading = false
     @Published var errorMessage: String?
     
-    override init() {
-        super.init()
-        setupLocationManager()
+    // MARK: - Initialization
+    init(
+        locationService: LocationServiceProtocol,
+        weatherAPIService: WeatherAPIService,
+        weatherFormatter: WeatherFormatterProtocol
+    ) {
+        self.locationService = locationService
+        self.weatherAPIService = weatherAPIService
+        self.weatherFormatter = weatherFormatter
     }
     
-    private func setupLocationManager() {
-        locationManager.delegate = self
-        locationManager.desiredAccuracy = kCLLocationAccuracyBest
+    convenience init() {
+        self.init(
+            locationService: LocationService(),
+            weatherAPIService: WeatherAPIService(),
+            weatherFormatter: WeatherFormatter()
+        )
     }
     
+    // MARK: - Public Methods
     func requestLocation() {
-        let status = locationManager.authorizationStatus
-        print("Location authorization status: \(status.rawValue)")
-        
-        switch status {
-        case .notDetermined:
-            print("Requesting location authorization...")
-            locationManager.requestWhenInUseAuthorization()
-        case .authorizedWhenInUse, .authorizedAlways:
-            print("Location authorized, requesting location...")
-            isLoading = true
-            locationManager.requestLocation()
-        case .denied, .restricted:
-            print("Location access denied")
-            errorMessage = "Location access denied. Please enable location access in Settings."
-        @unknown default:
-            print("Unknown authorization status")
-            break
+        print("🌤️ WeatherService: requestLocation() called")
+        Task {
+            await fetchWeatherForCurrentLocation()
         }
     }
     
-    // Fallback method to test weather API with default coordinates
     func loadWeatherWithDefaultLocation() {
-        print("Loading weather with default location (San Francisco)")
-        isLoading = true
-        fetchWeatherData(lat: 37.7749, lon: -122.4194) // San Francisco coordinates
-    }
-    
-    // MARK: - CLLocationManagerDelegate
-    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        print("Location received: \(locations.count) locations")
-        guard let location = locations.first else { 
-            print("No location in array")
-            return 
-        }
-        print("Location coordinates: \(location.coordinate.latitude), \(location.coordinate.longitude)")
-        isLoading = false
-        fetchWeatherData(lat: location.coordinate.latitude, lon: location.coordinate.longitude)
-        reverseGeocode(location: location)
-    }
-    
-    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        print("Location error: \(error.localizedDescription)")
-        isLoading = false
-        errorMessage = "Unable to get location. Please check your location settings."
-    }
-    
-    func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
-        print("Authorization status changed to: \(status.rawValue)")
-        
-        switch status {
-        case .authorizedWhenInUse, .authorizedAlways:
-            print("Location authorized, requesting location...")
-            isLoading = true
-            locationManager.requestLocation()
-        case .denied, .restricted:
-            print("Location access denied")
-            errorMessage = "Location access denied. Please enable location access in Settings."
-            isLoading = false
-        case .notDetermined:
-            print("Location authorization not determined")
-            break
-        @unknown default:
-            print("Unknown authorization status")
-            break
+        Task {
+            await fetchWeatherData(
+                lat: APIConfig.defaultLocation.lat,
+                lon: APIConfig.defaultLocation.lon
+            )
         }
     }
     
-    private func fetchWeatherData(lat: Double, lon: Double) {
+    // MARK: - Private Methods
+    private func fetchWeatherForCurrentLocation() async {
+        print("🌤️ WeatherService: fetchWeatherForCurrentLocation called")
         isLoading = true
         errorMessage = nil
         
-        print("Fetching weather data for coordinates: \(lat), \(lon)")
-        
-        // Using a free weather API that doesn't require authentication
-        let urlString = "https://api.open-meteo.com/v1/forecast?latitude=\(lat)&longitude=\(lon)&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,pressure_msl,wind_speed_10m,wind_direction_10m,visibility&hourly=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation_probability,weather_code,pressure_msl,wind_speed_10m,wind_direction_10m,visibility&daily=weather_code,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_probability_max,sunrise,sunset,uv_index_max&timezone=auto"
-        
-        print("API URL: \(urlString)")
-        
-        guard let url = URL(string: urlString) else {
-            errorMessage = "Invalid URL"
-            isLoading = false
-            return
-        }
-        
-        URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
-            DispatchQueue.main.async {
-                self?.isLoading = false
-                
-                if let error = error {
-                    print("Network error: \(error.localizedDescription)")
-                    self?.errorMessage = "Network error: \(error.localizedDescription)"
-                    return
-                }
-                
-                guard let data = data else {
-                    print("No data received from API")
-                    self?.errorMessage = "No data received"
-                    return
-                }
-                
-                print("Received \(data.count) bytes from API")
-                
-                do {
-                    let weatherResponse = try JSONDecoder().decode(WeatherResponse.self, from: data)
-                    print("Successfully decoded weather response")
-                    self?.processWeatherData(weatherResponse)
-                    print("Weather data processing completed on main thread")
-                } catch {
-                    print("Failed to parse weather data: \(error.localizedDescription)")
-                    if let jsonString = String(data: data, encoding: .utf8) {
-                        print("Raw JSON response: \(jsonString)")
-                    }
-                    self?.errorMessage = "Failed to parse weather data: \(error.localizedDescription)"
-                }
-            }
-        }.resume()
-    }
-    
-    private func reverseGeocode(location: CLLocation) {
-        let geocoder = CLGeocoder()
-        geocoder.reverseGeocodeLocation(location) { [weak self] placemarks, error in
-            DispatchQueue.main.async {
-                print("Reverse geocoding result: \(placemarks?.count ?? 0) placemarks")
-                if let placemark = placemarks?.first {
-                    let locationName = placemark.locality ?? placemark.name ?? "Unknown"
-                    let country = placemark.country ?? "Unknown"
-                    print("Location name: \(locationName), Country: \(country)")
-                    
-                    self?.location = Location(
-                        name: locationName,
-                        lat: location.coordinate.latitude,
-                        lon: location.coordinate.longitude,
-                        country: country,
-                        state: placemark.administrativeArea
-                    )
-                } else {
-                    print("No placemark found, using coordinates as location name")
-                    self?.location = Location(
-                        name: "San Francisco", // Fallback for the coordinates you have
-                        lat: location.coordinate.latitude,
-                        lon: location.coordinate.longitude,
-                        country: "United States",
-                        state: "California"
-                    )
-                }
-            }
+        do {
+            print("🌤️ WeatherService: Getting current location...")
+            let location = try await locationService.getCurrentLocation()
+            print("🌤️ WeatherService: Got location - lat: \(location.coordinate.latitude), lon: \(location.coordinate.longitude)")
+            
+            print("🌤️ WeatherService: Reverse geocoding...")
+            let locationName = try await locationService.reverseGeocode(location: location)
+            print("🌤️ WeatherService: Got location name: \(locationName.name)")
+            
+            await fetchWeatherData(lat: location.coordinate.latitude, lon: location.coordinate.longitude)
+            self.location = locationName
+        } catch {
+            print("🌤️ WeatherService: Error in fetchWeatherForCurrentLocation: \(error)")
+            await handleError(error)
         }
     }
     
-    // MARK: - Helper Methods
-    func formatTemperature(_ temp: Double) -> String {
-        return "\(Int(round(temp)))°C"
+               private func fetchWeatherData(lat: Double, lon: Double) async {
+               print("🌤️ Starting weather fetch for lat: \(lat), lon: \(lon)")
+               isLoading = true
+               errorMessage = nil
+               
+               do {
+                   print("🌤️ Calling weather API...")
+                   let weatherResponse = try await weatherAPIService.fetchWeather(lat: lat, lon: lon)
+                   print("🌤️ API call successful, processing data...")
+                   print("🌤️ API response - hourly count: \(weatherResponse.hourly.time.count), daily count: \(weatherResponse.daily.time.count)")
+                   await processWeatherData(weatherResponse)
+                   print("🌤️ Weather data processing complete")
+               } catch {
+                   print("🌤️ Error in fetchWeatherData: \(error)")
+                   await handleError(error)
+               }
+           }
+    
+    private func processWeatherData(_ response: WeatherResponse) async {
+        print("🌤️ Processing weather data...")
+        print("🌤️ Daily data count: \(response.daily.time.count)")
+        print("🌤️ Hourly data count: \(response.hourly.time.count)")
+        
+        currentWeather = processCurrentWeather(response.current, dailyData: response.daily)
+        print("🌤️ Current weather processed")
+        
+        hourlyForecast = processHourlyForecast(response.hourly)
+        print("🌤️ Hourly forecast processed: \(hourlyForecast.count) items")
+        
+        dailyForecast = processDailyForecast(response.daily)
+        print("🌤️ Daily forecast processed: \(dailyForecast.count) items")
+        
+        isLoading = false
+        print("🌤️ Weather data processing complete")
+        print("🌤️ Final counts - hourly: \(hourlyForecast.count), daily: \(dailyForecast.count)")
     }
     
-    func formatTime(_ timestamp: TimeInterval) -> String {
-        let date = Date(timeIntervalSince1970: timestamp)
-        let formatter = DateFormatter()
-        formatter.timeStyle = .short
-        formatter.timeZone = TimeZone.current
-        return formatter.string(from: date)
-    }
-    
-    func formatHourlyTime(_ timestamp: TimeInterval) -> String {
-        let date = Date(timeIntervalSince1970: timestamp)
-        let formatter = DateFormatter()
-        formatter.dateFormat = "HH:mm"
-        formatter.timeZone = TimeZone.current
-        return formatter.string(from: date)
-    }
-    
-    func formatDate(_ timestamp: TimeInterval) -> String {
-        let date = Date(timeIntervalSince1970: timestamp)
-        let formatter = DateFormatter()
-        formatter.dateFormat = "EEE, MMM d"
-        return formatter.string(from: date)
-    }
-    
-    func getWindDirection(_ degrees: Int) -> String {
-        let directions = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE",
-                         "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"]
-        let index = Int(round(Double(degrees) / 22.5)) % 16
-        return directions[index]
+    private func handleError(_ error: Error) async {
+        isLoading = false
+        
+        if let weatherError = error as? WeatherError {
+            errorMessage = weatherError.localizedDescription
+        } else {
+            errorMessage = error.localizedDescription
+        }
     }
     
     // MARK: - Data Processing Methods
-    private func processWeatherData(_ response: WeatherResponse) {
-        print("Processing weather data...")
-        
-        // Process daily forecast first to get sunrise/sunset data
-        dailyForecast = processDailyForecast(response.daily)
-        print("Daily forecast processed: \(dailyForecast.count) items")
-        
-        // Process current weather with sunrise/sunset from today's data
-        currentWeather = processCurrentWeather(response.current, dailyData: response.daily)
-        print("Current weather processed: \(currentWeather != nil)")
-        
-        // Process hourly forecast (next 24 hours)
-        hourlyForecast = processHourlyForecast(response.hourly)
-        print("Hourly forecast processed: \(hourlyForecast.count) items")
-        
-        // Force UI update by setting isLoading to false
-        isLoading = false
-        print("Weather data processing complete!")
-    }
-    
     private func processCurrentWeather(_ current: CurrentWeather, dailyData: DailyData) -> ProcessedCurrentWeather {
-        let dateFormatter = ISO8601DateFormatter()
-        let dt = dateFormatter.date(from: current.time)?.timeIntervalSince1970 ?? Date().timeIntervalSince1970
+        let dt = ISO8601DateFormatter().date(from: current.time)?.timeIntervalSince1970 ?? Date().timeIntervalSince1970
         
         // Get sunrise/sunset from today's daily data
+        let dateFormatter = ISO8601DateFormatter()
         let sunrise = dailyData.sunrise.count > 0 ? dateFormatter.date(from: dailyData.sunrise[0])?.timeIntervalSince1970 ?? dt : dt
         let sunset = dailyData.sunset.count > 0 ? dateFormatter.date(from: dailyData.sunset[0])?.timeIntervalSince1970 ?? dt : dt
         
@@ -261,7 +157,11 @@ class WeatherService: NSObject, ObservableObject, CLLocationManagerDelegate {
     }
     
     private func processHourlyForecast(_ hourly: HourlyData) -> [ProcessedHourlyWeather] {
-        let dateFormatter = ISO8601DateFormatter()
+        print("🌤️ Processing hourly forecast...")
+        print("🌤️ Hourly time count: \(hourly.time.count)")
+        print("🌤️ Hourly temperature count: \(hourly.temperature2m.count)")
+        print("🌤️ Hourly weather code count: \(hourly.weatherCode.count)")
+        
         var processed: [ProcessedHourlyWeather] = []
         
         for i in 0..<min(hourly.time.count, 24) {
@@ -274,6 +174,7 @@ class WeatherService: NSObject, ObservableObject, CLLocationManagerDelegate {
                   i < hourly.windDirection10m.count,
                   i < hourly.weatherCode.count,
                   i < hourly.precipitationProbability.count else {
+                print("🌤️ Skipping hour \(i) due to missing data")
                 continue
             }
             
@@ -286,8 +187,6 @@ class WeatherService: NSObject, ObservableObject, CLLocationManagerDelegate {
             
             let hourOffset = i
             let dt = calendar.date(byAdding: .hour, value: hourOffset, to: roundedCurrentTime)?.timeIntervalSince1970 ?? Date().timeIntervalSince1970
-            let formattedTime = formatHourlyTime(dt)
-            print("Hourly time \(i): generated -> \(dt) -> \(formattedTime)")
             
             processed.append(ProcessedHourlyWeather(
                 dt: dt,
@@ -305,11 +204,16 @@ class WeatherService: NSObject, ObservableObject, CLLocationManagerDelegate {
             ))
         }
         
+        print("🌤️ Processed \(processed.count) hourly forecast items")
         return processed
     }
     
     private func processDailyForecast(_ daily: DailyData) -> [ProcessedDailyWeather] {
-        let dateFormatter = ISO8601DateFormatter()
+        print("🌤️ Processing daily forecast...")
+        print("🌤️ Daily time count: \(daily.time.count)")
+        print("🌤️ Daily weather code count: \(daily.weatherCode.count)")
+        print("🌤️ Daily temp max count: \(daily.temperature2mMax.count)")
+        
         var processed: [ProcessedDailyWeather] = []
         
         // Generate proper daily timestamps starting from today
@@ -326,6 +230,7 @@ class WeatherService: NSObject, ObservableObject, CLLocationManagerDelegate {
                   i < daily.sunrise.count,
                   i < daily.sunset.count,
                   i < daily.uvIndexMax.count else {
+                print("🌤️ Skipping day \(i) due to missing data")
                 continue
             }
             
@@ -338,9 +243,6 @@ class WeatherService: NSObject, ObservableObject, CLLocationManagerDelegate {
             let sunsetHour = 18 // 6 PM
             let sunrise = calendar.date(bySettingHour: sunriseHour, minute: 0, second: 0, of: calendar.date(byAdding: .day, value: dayOffset, to: currentTime) ?? currentTime)?.timeIntervalSince1970 ?? dt
             let sunset = calendar.date(bySettingHour: sunsetHour, minute: 0, second: 0, of: calendar.date(byAdding: .day, value: dayOffset, to: currentTime) ?? currentTime)?.timeIntervalSince1970 ?? dt
-            
-            let formattedDate = formatDate(dt)
-            print("Daily forecast day \(i): generated -> \(dt) -> \(formattedDate)")
             
             processed.append(ProcessedDailyWeather(
                 dt: dt,
@@ -371,6 +273,7 @@ class WeatherService: NSObject, ObservableObject, CLLocationManagerDelegate {
             ))
         }
         
+        print("🌤️ Processed \(processed.count) daily forecast items")
         return processed
     }
     
@@ -384,41 +287,39 @@ class WeatherService: NSObject, ObservableObject, CLLocationManagerDelegate {
         )
     }
     
+    // MARK: - Formatter Delegation
+    func formatTemperature(_ temperature: Double) -> String {
+        return weatherFormatter.formatTemperature(temperature)
+    }
+    
+    func formatTime(_ timestamp: TimeInterval) -> String {
+        return weatherFormatter.formatTime(timestamp)
+    }
+    
+    func formatHourlyTime(_ timestamp: TimeInterval) -> String {
+        return weatherFormatter.formatHourlyTime(timestamp)
+    }
+    
+    func formatDate(_ timestamp: TimeInterval) -> String {
+        return weatherFormatter.formatDate(timestamp)
+    }
+    
     func getWeatherIcon(for iconCode: String) -> String {
-        if let code = Int(iconCode), let weatherCode = WeatherCode(rawValue: code) {
-            return weatherCode.systemName
-        }
-        return "cloud.fill"
+        return weatherFormatter.getWeatherIcon(for: iconCode)
     }
     
     func getWeatherColor(for iconCode: String) -> String {
-        if let code = Int(iconCode), let weatherCode = WeatherCode(rawValue: code) {
-            return weatherCode.color
-        }
-        return "gray"
+        return weatherFormatter.getWeatherColor(for: iconCode)
     }
     
     func getWeatherColorAsColor(for iconCode: String) -> Color {
-        let colorString = getWeatherColor(for: iconCode)
-        switch colorString {
-        case "yellow":
-            return .yellow
-        case "orange":
-            return .orange
-        case "gray":
-            return .gray
-        case "blue":
-            return .blue
-        case "cyan":
-            return .cyan
-        case "purple":
-            return .purple
-        case "red":
-            return .red
-        case "green":
-            return .green
-        default:
-            return .gray
-        }
+        return weatherFormatter.getWeatherColorAsColor(for: iconCode)
     }
-}
+    
+    func getWindDirection(_ degrees: Int) -> String {
+        let directions = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE",
+                         "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"]
+        let index = Int(round(Double(degrees) / 22.5)) % 16
+        return directions[index]
+    }
+} 
