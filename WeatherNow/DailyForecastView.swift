@@ -13,10 +13,6 @@ struct DailyForecastView: View {
     
     var body: some View {
         VStack(spacing: 30) {
-            // Debug print
-            let _ = print("DailyForecastView: received \(dailyForecast.count) forecast items")
-            let _ = print("DailyForecastView: first item dt: \(dailyForecast.first?.dt ?? 0)")
-            let _ = print("DailyForecastView: first item temp max: \(dailyForecast.first?.temp.max ?? 0)")
             
             // Header
             HStack {

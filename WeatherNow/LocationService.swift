@@ -44,22 +44,17 @@ final class LocationService: NSObject, LocationServiceProtocol, ObservableObject
     }
     
     func getCurrentLocation() async throws -> CLLocation {
-        print("📍 LocationService: getCurrentLocation called")
         return try await withCheckedThrowingContinuation { continuation in
             self.locationContinuation = continuation
             
             switch authorizationStatus {
             case .notDetermined:
-                print("📍 LocationService: Requesting authorization")
                 locationManager.requestWhenInUseAuthorization()
             case .authorizedWhenInUse, .authorizedAlways:
-                print("📍 LocationService: Requesting location")
                 locationManager.requestLocation()
             case .denied, .restricted:
-                print("📍 LocationService: Location access denied")
                 continuation.resume(throwing: WeatherError.locationError("Location access denied"))
             @unknown default:
-                print("📍 LocationService: Unknown authorization status")
                 continuation.resume(throwing: WeatherError.locationError("Unknown authorization status"))
             }
         }

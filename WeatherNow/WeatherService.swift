@@ -45,7 +45,6 @@ final class WeatherService: WeatherServiceProtocol {
     
     // MARK: - Public Methods
     func requestLocation() {
-        print("🌤️ WeatherService: requestLocation() called")
         Task {
             await fetchWeatherForCurrentLocation()
         }
@@ -62,62 +61,37 @@ final class WeatherService: WeatherServiceProtocol {
     
     // MARK: - Private Methods
     private func fetchWeatherForCurrentLocation() async {
-        print("🌤️ WeatherService: fetchWeatherForCurrentLocation called")
         isLoading = true
         errorMessage = nil
         
         do {
-            print("🌤️ WeatherService: Getting current location...")
             let location = try await locationService.getCurrentLocation()
-            print("🌤️ WeatherService: Got location - lat: \(location.coordinate.latitude), lon: \(location.coordinate.longitude)")
-            
-            print("🌤️ WeatherService: Reverse geocoding...")
             let locationName = try await locationService.reverseGeocode(location: location)
-            print("🌤️ WeatherService: Got location name: \(locationName.name)")
             
             await fetchWeatherData(lat: location.coordinate.latitude, lon: location.coordinate.longitude)
             self.location = locationName
         } catch {
-            print("🌤️ WeatherService: Error in fetchWeatherForCurrentLocation: \(error)")
             await handleError(error)
         }
     }
     
                private func fetchWeatherData(lat: Double, lon: Double) async {
-               print("🌤️ Starting weather fetch for lat: \(lat), lon: \(lon)")
                isLoading = true
                errorMessage = nil
                
                do {
-                   print("🌤️ Calling weather API...")
                    let weatherResponse = try await weatherAPIService.fetchWeather(lat: lat, lon: lon)
-                   print("🌤️ API call successful, processing data...")
-                   print("🌤️ API response - hourly count: \(weatherResponse.hourly.time.count), daily count: \(weatherResponse.daily.time.count)")
                    await processWeatherData(weatherResponse)
-                   print("🌤️ Weather data processing complete")
                } catch {
-                   print("🌤️ Error in fetchWeatherData: \(error)")
                    await handleError(error)
                }
            }
     
     private func processWeatherData(_ response: WeatherResponse) async {
-        print("🌤️ Processing weather data...")
-        print("🌤️ Daily data count: \(response.daily.time.count)")
-        print("🌤️ Hourly data count: \(response.hourly.time.count)")
-        
         currentWeather = processCurrentWeather(response.current, dailyData: response.daily)
-        print("🌤️ Current weather processed")
-        
         hourlyForecast = processHourlyForecast(response.hourly)
-        print("🌤️ Hourly forecast processed: \(hourlyForecast.count) items")
-        
         dailyForecast = processDailyForecast(response.daily)
-        print("🌤️ Daily forecast processed: \(dailyForecast.count) items")
-        
         isLoading = false
-        print("🌤️ Weather data processing complete")
-        print("🌤️ Final counts - hourly: \(hourlyForecast.count), daily: \(dailyForecast.count)")
     }
     
     private func handleError(_ error: Error) async {
@@ -157,11 +131,6 @@ final class WeatherService: WeatherServiceProtocol {
     }
     
     private func processHourlyForecast(_ hourly: HourlyData) -> [ProcessedHourlyWeather] {
-        print("🌤️ Processing hourly forecast...")
-        print("🌤️ Hourly time count: \(hourly.time.count)")
-        print("🌤️ Hourly temperature count: \(hourly.temperature2m.count)")
-        print("🌤️ Hourly weather code count: \(hourly.weatherCode.count)")
-        
         var processed: [ProcessedHourlyWeather] = []
         
         for i in 0..<min(hourly.time.count, 24) {
@@ -174,7 +143,6 @@ final class WeatherService: WeatherServiceProtocol {
                   i < hourly.windDirection10m.count,
                   i < hourly.weatherCode.count,
                   i < hourly.precipitationProbability.count else {
-                print("🌤️ Skipping hour \(i) due to missing data")
                 continue
             }
             
@@ -204,16 +172,10 @@ final class WeatherService: WeatherServiceProtocol {
             ))
         }
         
-        print("🌤️ Processed \(processed.count) hourly forecast items")
         return processed
     }
     
     private func processDailyForecast(_ daily: DailyData) -> [ProcessedDailyWeather] {
-        print("🌤️ Processing daily forecast...")
-        print("🌤️ Daily time count: \(daily.time.count)")
-        print("🌤️ Daily weather code count: \(daily.weatherCode.count)")
-        print("🌤️ Daily temp max count: \(daily.temperature2mMax.count)")
-        
         var processed: [ProcessedDailyWeather] = []
         
         // Generate proper daily timestamps starting from today
@@ -230,7 +192,6 @@ final class WeatherService: WeatherServiceProtocol {
                   i < daily.sunrise.count,
                   i < daily.sunset.count,
                   i < daily.uvIndexMax.count else {
-                print("🌤️ Skipping day \(i) due to missing data")
                 continue
             }
             
@@ -273,7 +234,6 @@ final class WeatherService: WeatherServiceProtocol {
             ))
         }
         
-        print("🌤️ Processed \(processed.count) daily forecast items")
         return processed
     }
     

@@ -35,32 +35,12 @@ final class NetworkService: NetworkServiceProtocol {
                 throw WeatherError.networkError("HTTP \(httpResponse.statusCode)")
             }
             
-            // Debug: Print the JSON response
-            if let jsonString = String(data: data, encoding: .utf8) {
-                print("API Response: \(jsonString.prefix(500))...")
-            }
+
             
             do {
                 let decoded = try decoder.decode(type, from: data)
-                print("✅ Successfully decoded \(type) from API response")
                 return decoded
             } catch {
-                print("❌ Decoding error: \(error)")
-                print("❌ Error details: \(error.localizedDescription)")
-                if let decodingError = error as? DecodingError {
-                    switch decodingError {
-                    case .keyNotFound(let key, let context):
-                        print("❌ Missing key: \(key.stringValue) at path: \(context.codingPath)")
-                    case .typeMismatch(let type, let context):
-                        print("❌ Type mismatch: expected \(type) at path: \(context.codingPath)")
-                    case .valueNotFound(let type, let context):
-                        print("❌ Value not found: expected \(type) at path: \(context.codingPath)")
-                    case .dataCorrupted(let context):
-                        print("❌ Data corrupted: \(context)")
-                    @unknown default:
-                        print("❌ Unknown decoding error")
-                    }
-                }
                 throw WeatherError.networkError(error.localizedDescription)
             }
         } catch let error as WeatherError {
