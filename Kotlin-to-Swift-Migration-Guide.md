@@ -11,8 +11,9 @@
 8. [错误处理](#错误处理)
 9. [异步编程](#异步编程)
 10. [UI 开发](#ui-开发)
-11. [常用模式和最佳实践](#常用模式和最佳实践)
-12. [迁移检查清单](#迁移检查清单)
+11. [内存管理详解](#内存管理详解)
+12. [常用模式和最佳实践](#常用模式和最佳实践)
+13. [迁移检查清单](#迁移检查清单)
 
 ## 介绍
 
@@ -1396,6 +1397,256 @@ class SettingsManager {
 - **UIKit:** 单元格重用，视图层次优化
 - **内存管理:** ARC (自动引用计数)
 
+## 内存管理详解
+
+### 核心机制对比
+
+Kotlin 和 Swift 在内存管理方面采用完全不同的机制，这是迁移过程中需要重点理解的概念。
+
+#### Kotlin (JVM) - 垃圾回收 (GC)
+- **机制:** 自动垃圾回收器在后台运行
+- **特点:** 开发者无需手动管理内存
+- **时机:** GC 在适当时机自动回收不再使用的对象
+- **影响:** 可能造成短暂停顿，内存释放时机不确定
+
+#### Swift (iOS/macOS) - 自动引用计数 (ARC)
+- **机制:** 编译器在编译时插入内存管理代码
+- **特点:** 基于引用计数，当计数为 0 时立即释放
+- **时机:** 引用计数降为 0 时立即释放内存
+- **影响:** 无 GC 停顿，内存释放更可预测
+
+### 引用计数机制详解
+
+#### Kotlin 引用管理
+```kotlin
+class User {
+    var name: String = ""
+}
+
+fun example() {
+    val user1 = User() // 对象创建，GC 管理
+    val user2 = user1  // 引用复制，GC 跟踪
+    
+    // 当 user1 和 user2 都超出作用域时，GC 会回收对象
+    // 但回收时机不确定，可能在几分钟后或下次 GC 时
+}
+```
+
+#### Swift 引用计数
+```swift
+class User {
+    var name: String = ""
+}
+
+func example() {
+    let user1 = User() // 引用计数 = 1
+    let user2 = user1  // 引用计数 = 2
+    
+    // 当 user2 超出作用域时，引用计数 = 1
+    // 当 user1 超出作用域时，引用计数 = 0，立即释放
+}
+```
+
+### 循环引用处理
+
+#### Kotlin 循环引用
+```kotlin
+class Parent {
+    var child: Child? = null
+}
+
+class Child {
+    var parent: Parent? = null
+}
+
+fun createCycle() {
+    val parent = Parent()
+    val child = Child()
+    
+    parent.child = child
+    child.parent = parent
+    
+    // GC 会检测并处理循环引用
+    // 但可能需要多次 GC 周期才能完全清理
+}
+```
+
+#### Swift 循环引用解决方案
+```swift
+class Parent {
+    var child: Child?
+}
+
+class Child {
+    weak var parent: Parent? // 使用 weak 避免循环引用
+}
+
+func createCycle() {
+    let parent = Parent()
+    let child = Child()
+    
+    parent.child = child
+    child.parent = parent
+    
+    // 使用 weak 引用，不会造成循环引用
+    // 当 parent 释放时，child.parent 自动变为 nil
+}
+```
+
+### 常见内存泄漏场景
+
+#### Kotlin 内存泄漏
+```kotlin
+class MyActivity : AppCompatActivity() {
+    private val handler = Handler()
+    
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        
+        // 潜在泄漏：匿名内部类持有 Activity 引用
+        handler.postDelayed({
+            // 这里持有 Activity 的隐式引用
+            updateUI()
+        }, 5000)
+    }
+    
+    private fun updateUI() {
+        // 即使 Activity 被销毁，这个回调仍可能执行
+    }
+    
+    override fun onDestroy() {
+        super.onDestroy()
+        handler.removeCallbacksAndMessages(null) // 清理回调
+    }
+}
+```
+
+#### Swift 内存泄漏
+```swift
+class MyViewController: UIViewController {
+    private var timer: Timer?
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        
+        // 潜在泄漏：Timer 持有 ViewController 的强引用
+        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
+            self.updateUI() // 强引用循环
+        }
+    }
+    
+    private func updateUI() {
+        // 即使 ViewController 被销毁，Timer 仍会继续运行
+    }
+    
+    deinit {
+        timer?.invalidate() // 需要在 deinit 中清理
+    }
+}
+```
+
+### 性能特征对比
+
+| 特性 | Kotlin (GC) | Swift (ARC) |
+|------|-------------|-------------|
+| **内存释放时机** | 不确定，GC 决定 | 立即，引用计数为 0 时 |
+| **性能影响** | 可能有 GC 停顿 | 无停顿，但引用计数开销 |
+| **内存使用** | 可能使用更多内存 | 更精确的内存使用 |
+| **可预测性** | 较低 | 较高 |
+| **调试难度** | 较难调试内存问题 | 相对容易调试 |
+
+### 最佳实践对比
+
+#### Kotlin 内存管理最佳实践
+```kotlin
+class MyViewModel : ViewModel() {
+    private val _data = MutableLiveData<String>()
+    val data: LiveData<String> = _data
+    
+    // 使用 ViewModel 避免 Activity 泄漏
+    fun loadData() {
+        viewModelScope.launch {
+            // 协程作用域自动管理
+            val result = repository.getData()
+            _data.value = result
+        }
+    }
+    
+    // 使用 WeakReference 避免循环引用
+    private val callback = WeakReference<Callback>(callback)
+}
+```
+
+#### Swift 内存管理最佳实践
+```swift
+class MyViewModel: ObservableObject {
+    @Published var data: String = ""
+    private var cancellables = Set<AnyCancellable>()
+    
+    func loadData() {
+        // 使用 Combine 的自动取消
+        repository.getData()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] result in
+                self?.data = result
+            }
+            .store(in: &cancellables)
+    }
+    
+    // 使用 weak self 避免闭包循环引用
+    func setupTimer() {
+        Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+            self?.updateData()
+        }
+    }
+}
+```
+
+### 调试工具对比
+
+#### Kotlin 调试工具
+- **Android Studio Memory Profiler:** 实时内存使用分析
+- **LeakCanary:** 自动检测内存泄漏
+- **GC 日志分析:** 分析垃圾回收行为
+- **Heap Dump 分析:** 详细内存快照分析
+
+#### Swift 调试工具
+- **Xcode Instruments (Leaks):** 检测内存泄漏
+- **Xcode Instruments (Allocations):** 内存分配分析
+- **内存图调试器:** 可视化对象关系
+- **ARC 调试选项:** 编译时内存管理分析
+
+### 迁移注意事项
+
+从 Kotlin 迁移到 Swift 时，内存管理方面需要特别注意：
+
+1. **理解 ARC 机制:** 不再依赖 GC，需要主动管理引用关系
+2. **使用 weak/unowned:** 避免循环引用，特别是在闭包中
+3. **及时清理资源:** 在 `deinit` 中清理定时器、通知、观察者等
+4. **注意闭包捕获:** 使用 `[weak self]` 避免强引用循环
+5. **利用值类型:** 优先使用 `struct` 和 `enum`，它们不参与引用计数
+6. **理解所有权:** 掌握 `strong`、`weak`、`unowned` 的区别和使用场景
+
+### 内存管理检查清单
+
+#### 迁移前准备
+- [ ] 理解 ARC 基本概念
+- [ ] 学习 weak/unowned 关键字
+- [ ] 了解常见内存泄漏模式
+- [ ] 熟悉 Xcode 内存调试工具
+
+#### 迁移过程中
+- [ ] 识别并处理循环引用
+- [ ] 在闭包中使用 `[weak self]`
+- [ ] 及时清理定时器和观察者
+- [ ] 使用值类型减少引用计数开销
+
+#### 迁移后验证
+- [ ] 使用 Instruments 检测内存泄漏
+- [ ] 验证对象生命周期正确性
+- [ ] 测试内存压力场景
+- [ ] 检查 deinit 方法正确实现
+
 ### 测试方法
 
 #### Android 测试
@@ -1536,6 +1787,10 @@ class UserService {
 - [ ] 转换 UI 组件
 - [ ] 更新错误处理
 - [ ] 迁移异步操作
+- [ ] 处理内存管理 (GC → ARC)
+- [ ] 识别并解决循环引用
+- [ ] 在闭包中使用 weak/unowned
+- [ ] 添加资源清理代码
 
 ### 迁移后
 - [ ] 测试所有功能
@@ -1546,10 +1801,12 @@ class UserService {
 
 ### 需要避免的常见陷阱
 1. **忘记可选类型**: 始终正确处理可选值
-2. **忽略内存管理**: 理解 ARC vs 垃圾回收
+2. **忽略内存管理**: 理解 ARC vs 垃圾回收，避免循环引用
 3. **直接语法翻译**: 适应 Swift 惯用法
 4. **平台特定功能**: 不要尝试复制 Android 特定功能
 5. **UI 模式**: 理解 iOS 设计指南
+6. **闭包循环引用**: 在闭包中使用 `[weak self]` 避免内存泄漏
+7. **资源未清理**: 在 `deinit` 中清理定时器、通知等资源
 
 ### 资源
 - [Swift 文档](https://docs.swift.org/swift-book/)
